@@ -1,0 +1,64 @@
+# ============================================================================
+# Dependency Updates with Dependabot
+# ============================================================================
+
+version: 2
+
+updates:
+  # Python dependencies
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    reviewers:
+      - maintainers
+    labels:
+      - dependencies
+      - python
+    commit-message:
+      prefix: "deps(python):"
+    groups:
+      security:
+        patterns:
+          - "cryptography"
+          - "python-jose"
+          - "passlib"
+        update-types:
+          - minor
+          - patch
+      ml-frameworks:
+        patterns:
+          - "tensorflow*"
+          - "torch*"
+          - "scikit-learn"
+          - "xgboost"
+        update-types:
+          - patch
+
+  # Docker base images
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+    reviewers:
+      - maintainers
+    labels:
+      - dependencies
+      - docker
+    commit-message:
+      prefix: "deps(docker):"
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    reviewers:
+      - maintainers
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: "deps(actions):"

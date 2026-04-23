@@ -1,0 +1,11 @@
+{
+    "total_revenue": 39887595.32190596,
+    "total_expenses": 25389986.337009724,
+    "total_profit": 14497608.984896237,
+    "avg_daily_revenue": 109883.1827049751,
+    "avg_profit_margin": 36.0237741046832,
+    "total_transactions": 455858,
+    "total_customers": 108291,
+    "max_daily_revenue": 131226.73425791552,
+    "min_daily_revenue": 89648.7885496116
+}

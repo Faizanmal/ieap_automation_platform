@@ -1,0 +1,50 @@
+{
+    "timestamp": "2025-10-30T13:20:28.362119",
+    "word_count": 129,
+    "summary": "Tech Innovations Inc. reported strong financial results for Q4 2024. Revenue reached $15. 2 million, representing a 45% year-over-year growth.",
+    "sentiment": {
+        "sentiment": "negative",
+        "confidence": 0.9585153460502625,
+        "scores": {
+            "positive": 0.020772544667124748,
+            "neutral": 0.020712122321128845,
+            "negative": 0.9585153460502625
+        }
+    },
+    "key_metrics": {
+        "financial_figures": [
+            "$15.2 million",
+            "$3.5 million"
+        ],
+        "percentages": [
+            "45%",
+            "18%",
+            "35%",
+            "22%"
+        ],
+        "dates": [
+            "2024",
+            "2025"
+        ]
+    },
+    "entities": {
+        "companies": [
+            "Tech",
+            "Innovations",
+            "Inc.",
+            "Q4",
+            "Revenue",
+            "Key",
+            "Customer",
+            "Monthly",
+            "Cash",
+            "However,"
+        ],
+        "people": [],
+        "locations": []
+    },
+    "risks": [
+        "Regulatory Risk",
+        "Market Risk"
+    ]
+}

@@ -1,0 +1,250 @@
+# ============================================================================
+# IEAP - Docker Compose for Local Development
+# ============================================================================
+
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # Main API Service
+  # ==========================================================================
+  api:
+    build:
+      context: .
+      target: development
+    container_name: ieap-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app:cached
+      - ./logs:/app/logs
+      - ./models:/app/models
+    environment:
+      - APP_ENV=development
+      - DEBUG=true
+      - DATABASE_URL=postgresql+asyncpg://ieap:ieap_password@postgres:5432/ieap_db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - JWT_SECRET_KEY=development-secret-key-change-in-production
+      - CORS_ORIGINS=["http://localhost:3000","http://localhost:8501"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - ieap-network
+    restart: unless-stopped
+
+  # ==========================================================================
+  # Celery Worker
+  # ==========================================================================
+  worker:
+    build:
+      context: .
+      target: worker
+    container_name: ieap-worker
+    volumes:
+      - .:/app:cached
+      - ./logs:/app/logs
+      - ./models:/app/models
+    environment:
+      - APP_ENV=development
+      - DATABASE_URL=postgresql+asyncpg://ieap:ieap_password@postgres:5432/ieap_db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    depends_on:
+      - api
+      - redis
+      - postgres
+    networks:
+      - ieap-network
+    restart: unless-stopped
+
+  # ==========================================================================
+  # Celery Beat Scheduler
+  # ==========================================================================
+  beat:
+    build:
+      context: .
+      target: beat
+    container_name: ieap-beat
+    volumes:
+      - .:/app:cached
+    environment:
+      - APP_ENV=development
+      - CELERY_BROKER_URL=redis://redis:6379/1
+    depends_on:
+      - worker
+    networks:
+      - ieap-network
+    restart: unless-stopped
+
+  # ==========================================================================
+  # Streamlit Dashboard
+  # ==========================================================================
+  dashboard:
+    build:
+      context: .
+      target: development
+    container_name: ieap-dashboard
+    command: streamlit run 4_analytics_dashboard/dashboard/app.py --server.port=8501 --server.address=0.0.0.0
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app:cached
+    environment:
+      - API_URL=http://api:8000
+    depends_on:
+      - api
+    networks:
+      - ieap-network
+    restart: unless-stopped
+
+  # ==========================================================================
+  # PostgreSQL Database
+  # ==========================================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: ieap-postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    environment:
+      - POSTGRES_USER=ieap
+      - POSTGRES_PASSWORD=ieap_password
+      - POSTGRES_DB=ieap_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ieap -d ieap_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ieap-network
+    restart: unless-stopped
+
+  # ==========================================================================
+  # Redis Cache & Message Broker
+  # ==========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: ieap-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ieap-network
+    restart: unless-stopped
+
+  # ==========================================================================
+  # Prometheus Monitoring
+  # ==========================================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ieap-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    networks:
+      - ieap-network
+    restart: unless-stopped
+
+  # ==========================================================================
+  # Grafana Dashboards
+  # ==========================================================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ieap-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      - prometheus
+    networks:
+      - ieap-network
+    restart: unless-stopped
+
+  # ==========================================================================
+  # Jaeger Tracing
+  # ==========================================================================
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: ieap-jaeger
+    ports:
+      - "16686:16686"  # UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - ieap-network
+    restart: unless-stopped
+
+  # ==========================================================================
+  # Flower - Celery Monitoring
+  # ==========================================================================
+  flower:
+    image: mher/flower:latest
+    container_name: ieap-flower
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - FLOWER_PORT=5555
+      - FLOWER_BASIC_AUTH=admin:admin
+    depends_on:
+      - redis
+      - worker
+    networks:
+      - ieap-network
+    restart: unless-stopped
+
+# ==========================================================================
+# Networks
+# ==========================================================================
+networks:
+  ieap-network:
+    driver: bridge
+    name: ieap-network
+
+# ==========================================================================
+# Volumes
+# ==========================================================================
+volumes:
+  postgres_data:
+    name: ieap-postgres-data
+  redis_data:
+    name: ieap-redis-data
+  prometheus_data:
+    name: ieap-prometheus-data
+  grafana_data:
+    name: ieap-grafana-data

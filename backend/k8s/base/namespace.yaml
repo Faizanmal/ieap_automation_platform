@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ieap
+  labels:
+    app.kubernetes.io/name: ieap
+    app.kubernetes.io/component: platform

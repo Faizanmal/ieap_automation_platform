@@ -1,0 +1,28 @@
+# Project 3 Requirements
+# NLP & AI Integration - Document Analyzer
+
+# NLP Core
+transformers>=4.30.0
+nltk>=3.8.0
+spacy>=3.6.0
+
+# LLM APIs (optional - uncomment to use)
+# openai>=0.27.0
+# anthropic>=0.3.0
+
+# Deep Learning
+torch>=2.0.0
+
+# Text Processing
+python-docx>=0.8.11
+PyPDF2>=3.0.0
+pdfplumber>=0.9.0
+
+# Utilities
+pandas>=2.0.0
+numpy>=1.24.0
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# Vector Database (for semantic search)
+chromadb>=0.4.0
